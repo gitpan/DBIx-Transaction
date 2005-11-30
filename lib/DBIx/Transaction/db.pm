@@ -105,6 +105,19 @@ sub rollback {
     return $self->close_transaction('rollback', @_);
 }
 
+sub do {
+    my $self = shift;
+    my $rv = eval { DBI::db::do($self, @_); };
+    if($@) {
+        $self->inc_transaction_error;
+        die "$@\n";
+    }
+    if(!$rv) {
+        $self->inc_transaction_error;
+    }
+    return $rv;
+}
+
 =pod
 
 =head1 NAME
@@ -164,17 +177,23 @@ error.
 
 =item commit
 
-If there are no sub-transactions currently running, C<commit> will issue the
-C<commit> call to the underlying database layer, B<unless> a sub-transaction
-of this transaction issued a C<rollback> request. In this case, C<commit>
-will raise a fatal error.
-
 If there are sub-transactions currently running, C<commit> records that this
 transaction has completed successfully and does nothing to the underlying
 database layer.
 
+If there are no sub-transactions currently running, C<commit> checks if
+there have been any transaction errors. If there has been a transaction
+error, C<commit> raises an exception. Otherwise, a C<commit> call is
+issued to the underlying database layer.
+
 If there is no transaction running at all, C<commit> will raise a fatal
 error.
+
+=item do
+
+Calls L<do()|DBI/do> on your underlying database handle. If an error
+occurs, this is recorded and you will not be able to issue a C<commit>
+for the current transaction.
 
 =back
 

@@ -20,7 +20,7 @@ if(!$test_opts{dsn}) {
     exit;
 }
 
-plan tests => 50;
+plan tests => 51;
 
 my $dsn = $test_opts{dsn};
 
@@ -31,26 +31,19 @@ if($dsn =~ s/^(DBI:[^:]+:).*$/$1invalid/i) {
     exit;
 }
 
-ok(
-    !DBIx::Transaction->connect(
-        $dsn, undef, undef, { RaiseError => 0, PrintError => 0, PrintWarn => 0 }
-    ),
-    'Bad connection string'
-);
-
 my $ac = DBIx::Transaction->connect(
     $test_opts{dsn}, $test_opts{dsn_user}, $test_opts{dsn_pass},
-    { RaiseError => 0, PrintError => 0, PrintWarn => 0, AutoCommit => 1 }
+    { RaiseError => 1, PrintError => 0, PrintWarn => 0, AutoCommit => 1 }
 );
 
 if($ac) {
-    pass('Database Connection (AutoCommit = 1)');
+    pass('Database Connection (AutoCommit = 1, RaiseError => 1)');
 } else {
-    fail('Database Connection (AutoCommit = 1)');
+    fail('Database Connection (AutoCommit = 1, RaiseError => 1)');
     exit;
 }
 
-run_tests($ac);
+run_tests($ac, undef);
 
 $ac->disconnect;
 
@@ -60,13 +53,13 @@ my $noac = DBIx::Transaction->connect_cached(
 );
     
 if($noac) {
-    pass('Database Connection (AutoCommit = 0)');
+    pass('Database Connection (AutoCommit = 0, RaiseError => 0)');
 } else {
-    fail('Database Connection (AutoCommit = 0)');
+    fail('Database Connection (AutoCommit = 0, RaiseError => 0)');
     exit;
 }
 
-run_tests($noac);
+run_tests($noac, 0);
 
 $noac->disconnect;
 
@@ -76,7 +69,7 @@ exit;
 # core tests
 
 sub run_tests {
-    my $dbh = shift;
+    my($dbh, $expect_error) = @_;
 
     my @setup = (q_create_foo);
     my @teardown = (q_drop_foo);
@@ -116,7 +109,7 @@ sub run_tests {
 
     diag('Expect some duplicate key / transaction state errors below:');
 
-    is(do_and_check_foo($dbh, [ @foo_one_two ]), 0, 'Aborted Transaction');
+    is(do_and_check_foo($dbh, [ @foo_one_two ]), $expect_error, 'Aborted Transaction');
 
     is($dbh->transaction_level, 0, 'Not in a transaction');
 
@@ -164,4 +157,13 @@ sub run_tests {
     like($@, qr/Asked to decrement transaction level below zero/,
         'Commit fails outside of a transaction'
     );
+    
+    diag('Expect a non-existant table warning here');
+    if(defined $expect_error) {
+        is(do_check_foo($dbh), 0, 'Got a query error back');
+    } else {
+        eval { do_check_foo($dbh); };
+        ok($@, 'Got a query exception back');
+        $dbh->rollback;
+    }
 }

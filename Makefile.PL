@@ -5,14 +5,22 @@ use ExtUtils::MakeMaker;
 
 our %test_opts;
 
+eval "use DBD::SQLite2";
+
+if(!$@) {
+    $test_opts{dsn} = 'DBI:SQLite2:test_db';
+} else {
+    $test_opts{dsn} = '';
+}
+
 print "Please supply a DBI database source name (DSN) to connect with for the unit tests.\n";
 print "Note that if your database is not fully transactional (such as older versions of MySQL ",
     "these tests may fail.\n";
 print "If this left blank, unit tests which depend on having a live database will be skipped.\n";
 my $u = scalar getpwuid($<);
-$test_opts{dsn} = prompt(qq{What DSN should we use for our unit tests?\n (eg; "DBI:Pg:dbname=$u")});
+$test_opts{dsn} = prompt(qq{What DSN should we use for our unit tests? (eg; "DBI:Pg:dbname=$u")\n [$test_opts{dsn}]}, $test_opts{dsn});
 
-if($test_opts{dsn}) {
+if($test_opts{dsn} && $test_opts{dsn} !~ /^DBI:SQLITE/i) {
    $test_opts{dsn_user} = prompt(" Username to connect to the database with:");
    $test_opts{dsn_pass} = prompt(" Password to connect to the database with:");
 }
@@ -26,7 +34,7 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/DBIx/Transaction.pod', # retrieve abstract from module
        AUTHOR         => 'Tyler MacDonald <japh@crackerjack.net>') : ()),
-    clean             => { FILES => 'test_opts.ph' },
+    clean             => { FILES => 'test_opts.ph test_db' },
 );
 
 use Data::Dumper;
