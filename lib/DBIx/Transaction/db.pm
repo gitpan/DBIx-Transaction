@@ -118,6 +118,26 @@ sub do {
     return $rv;
 }
 
+sub transaction {
+    my($self, $run) = @_;
+    my $rv;
+
+    $self->begin_work;
+
+    eval { $rv = $run->(); };
+
+    if($@) {
+        $self->rollback;
+        die $@;
+    } elsif(!$rv) {
+        $self->rollback;
+    } else {
+        $self->commit;
+    }
+
+    return $rv;    
+}
+
 =pod
 
 =head1 NAME
@@ -194,6 +214,63 @@ error.
 Calls L<do()|DBI/do> on your underlying database handle. If an error
 occurs, this is recorded and you will not be able to issue a C<commit>
 for the current transaction.
+
+=back
+
+=head2 Extra Methods
+
+The following method is provided for convienence in setting up database
+transactions:
+
+=over
+
+=item transaction($coderef)
+
+Execute the code contained inside C<$coderef> within a transaction.
+C<$coderef> is expected to return a scalar value.
+If C<$coderef> returns true, the transaction is committed. If
+C<$coderef> returns false or raises a fatal error, the transaction
+is rolled back. The return value is the same as what is returned by
+C<$coderef>.
+
+This method is supplied to make it easier to create nested transactions
+out of many small transactions. Example:
+
+  sub get_max_id {
+    my $dbh = shift;
+    # this will roll back if it can't get MAX(num)
+    $dbh->transaction(sub {
+      if(my($id) = $dbh->selectrow_array("SELECT MAX(num) FROM foo")) {
+        return $id;
+      } else {
+        return;
+      }
+    });
+  }
+  
+  sub do_something {
+    my($dbh, $num) = @_;
+    $dbh->transaction(sub {
+      $dbh->do("UPDATE foo SET bar = bar + 1 WHERE num = $num");
+    });
+  }
+  
+  sub do_many_things {
+    my $dbh = shift;
+    # if any of these sub-transactions roll back, the whole thing will roll
+    # back
+    $dbh->transaction(sub {
+      if(
+        do_something($dbh, 1) &&
+        do_something($dbh, 2) &&
+        (my $id = get_max_id($dbh))
+      ) {
+        return do_something($dbh, $id);
+      } else {
+        return;
+      }
+    });
+  }
 
 =back
 

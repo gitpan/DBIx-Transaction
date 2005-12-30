@@ -61,22 +61,20 @@ sub run_sql {
 
 sub do_check_foo {
     my $dbh = shift;
-    $dbh->begin_work;
-    if(my $sth = $dbh->prepare("SELECT * FROM foo ORDER BY name")) {
-        if($sth->execute) {
-            my $result = $sth->fetchall_arrayref();
-            $sth->finish;
-            $dbh->commit;
-            return $result;
+    return $dbh->transaction(sub {
+        if(my $sth = $dbh->prepare("SELECT * FROM foo ORDER BY name")) {
+            if($sth->execute) {
+                my $result = $sth->fetchall_arrayref();
+                $sth->finish;
+                return $result;
+            } else {
+                diag($dbh->errstr);
+                return 0;
+            }
         } else {
-            diag($dbh->errstr);
-            $dbh->rollback;
-            return 0;
+            return;
         }
-    } else {
-        $dbh->rollback;
-        return;
-    }
+    });
 }
 
 sub do_and_check_foo {

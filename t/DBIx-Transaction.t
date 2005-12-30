@@ -164,6 +164,5 @@ sub run_tests {
     } else {
         eval { do_check_foo($dbh); };
         ok($@, 'Got a query exception back');
-        $dbh->rollback;
     }
 }

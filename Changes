@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx-Transaction.
 
+0.003   2005/12/30
+        - Added a new "transaction()" convienence method which
+          runs a block of code inside a transaction. (db.pm)
+
 0.002   2005/11/30
         - Made do() and execute() poison a transaction if there is an
           error. This is the "lowest common denominator" DBMS behaviour

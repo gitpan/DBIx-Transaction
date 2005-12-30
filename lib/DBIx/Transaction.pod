@@ -13,22 +13,22 @@ DBIx::Transaction - Allow transactions to be nested in DBI
   
   sub do_something {
     my($dbh, $num) = @_;
-    $dbh->begin_work;
-    if($dbh->do("DO SOMETHING IN SQL WHERE num = $num")) {
-      $dbh->commit;
-    } else {
-      $dbh->rollback;
-    }
+    return $dbh->transaction(sub {
+        $dbh->do("DO SOMETHING IN SQL WHERE num = $num");
+    });
   }
   
+  my $good = 1;
   $dbh->begin_work;
   for my $i (1 .. 10) {
-    do_something($dbh, $i);
+    $good = 0 unless do_something($dbh, $i);
   }
   
-  if($dbh->commit) {
+  if($good) {
+    $dbh->commit;
     print "Every nested transaction worked and the database has been saved.\n";
   } else {
+    $dbh->rollback;
     print "A nested transaction rolled back, so nothing happened.\n";
   }
 
@@ -84,7 +84,9 @@ DBIx::Transaction overrides some of DBI's core methods to make them behave
 slightly differently. Below is a description of each class method that is
 overridden in the DBIx::Transaction package. Also check
 L<DBIx::Transaction::db> for descriptions of object methods that are overridden
-on database handles.
+on database handles. There is also one convienence method for setting up
+nested transactions: see
+L<the "transaction" method in DBIx::Transaction::db|DBIx::Transaction::db/item_transaction>.
 
 =head2 Overridden Methods
 
@@ -127,7 +129,8 @@ Tyler "Crackerjack" MacDonald <japh@crackerjack.net>
 
 =head1 LICENSE
 
-Copyright 2005 Tyler MacDonald
+Copyright 2005 Tyler MacDonald.
+
 This is free software; you may redistribute it under the same terms as perl itself.
 
 =cut
