@@ -1,11 +1,13 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         DBIx-Transaction
-version:      0.003
+version:      0.004
 version_from: lib/DBIx/Transaction.pm
 installdirs:  site
 requires:
+    DBD::SQLite2:                  0.32
     DBI:                           1.38
+    Test::CPANpm:                  0.007
 
 distribution_type: module
 generated_by: ExtUtils::MakeMaker version 6.17
