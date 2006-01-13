@@ -1,5 +1,11 @@
 Revision history for Perl extension DBIx-Transaction.
 
+0.005   2006/01/13
+        - After discussion on <dbi-users@perl.org> and <perl-qa@perl.org>,
+          switch to only depending on DBD::SQLite2 if AUTOMATED_TESTING
+          is set: that way, smoke testers need it to get a green light on
+          testers.cpan.org, but end users don't.
+
 0.004   2006/01/11
         - Use DBI_DSN for the default testing DSN, if available
         - Make automated testing more reliable by depending on DBD::SQLite2

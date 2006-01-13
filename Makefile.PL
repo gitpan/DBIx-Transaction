@@ -4,8 +4,17 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 
 our %test_opts;
+my $has_sqlite;
 
-$test_opts{dsn} = exists($ENV{DBI_DSN}) ? $ENV{DBI_DSN} : 'DBI:SQLite2:test_db';
+eval q{use DBD::SQLite2; 1;} && $has_sqlite++;
+
+# if we have SQLite2 installed, or we're in AUTOMATED_TESTING,
+# use it for as our default DSN for unit tests.
+
+$test_opts{dsn} =
+    exists($ENV{DBI_DSN}) ? $ENV{DBI_DSN} : (
+        ($has_sqlite || $ENV{AUTOMATED_TESTING}) ? 'DBI:SQLite2:test_db' : ''
+    );
 
 print "Please supply a DBI database source name (DSN) to connect with for the unit tests.\n";
 print "Note that if your database is not fully transactional (such as older versions of MySQL ",
@@ -23,9 +32,9 @@ WriteMakefile(
     NAME              => 'DBIx::Transaction',
     VERSION_FROM      => 'lib/DBIx/Transaction.pm', # finds $VERSION
     PREREQ_PM         => {
-		'DBI'	        =>	'1.38',
-        'Test::CPANpm'  =>  '0.007',
-        (($test_opts{dsn} =~ /^DBI:SQLITE2:/i) ? ('DBD::SQLite2' => 0.32) : ()),
+        'DBI'           =>      '1.38',
+        'Test::CPANpm'  =>      '0.008',
+        ($ENV{AUTOMATED_TESTING} ? ('DBD::SQLite2' => 0.32) : ()),
 	}, 
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/DBIx/Transaction.pod', # retrieve abstract from module
