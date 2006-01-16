@@ -8,7 +8,7 @@ use DBI;
 use DBIx::Transaction::db;
 use DBIx::Transaction::st;
 
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 
 return 1;
 

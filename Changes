@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx-Transaction.
 
+0.006   2006/01/16
+        - Added debugging to Makefile.t to see why our AUTOMATED_TESTING
+          variable isn't being passed along.
+
 0.005   2006/01/13
         - After discussion on <dbi-users@perl.org> and <perl-qa@perl.org>,
           switch to only depending on DBD::SQLite2 if AUTOMATED_TESTING
