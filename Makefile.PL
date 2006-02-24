@@ -33,9 +33,10 @@ WriteMakefile(
     VERSION_FROM      => 'lib/DBIx/Transaction.pm', # finds $VERSION
     PREREQ_PM         => {
         'DBI'           =>      '1.38',
-        'Test::CPANpm'  =>      '0.008',
+        #'Test::CPANpm'  =>      '0.008',
         ($ENV{AUTOMATED_TESTING} ? ('DBD::SQLite2' => 0.32) : ()),
 	}, 
+    NO_META		=> 1,
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/DBIx/Transaction.pod', # retrieve abstract from module
        AUTHOR         => 'Tyler MacDonald <japh@crackerjack.net>') : ()),
@@ -44,7 +45,7 @@ WriteMakefile(
 
 use Data::Dumper;
 if(open(my $fh, ">test_opts.ph")) {
-     print $fh "my " . Data::Dumper->Dump([\%test_opts], ['*test_opts']);
+     print $fh "my " . Data::Dumper->Dump([\%test_opts], ['test_opts']);
 } else {
      die "Saving unit test options failed: $!";
 }

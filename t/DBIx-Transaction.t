@@ -12,7 +12,7 @@ use warnings (FATAL => 'all');
 use DBIx::Transaction;
 use DBIx::Transaction::Test;
 
-our %test_opts = do "test_opts.ph"
+our %test_opts = %{ do "test_opts.ph" }
     or die "Failed to read test options: $@";
 
 if(!$test_opts{dsn}) {
@@ -20,16 +20,9 @@ if(!$test_opts{dsn}) {
     exit;
 }
 
-plan tests => 51;
+plan tests => 52;
 
 my $dsn = $test_opts{dsn};
-
-if($dsn =~ s/^(DBI:[^:]+:).*$/$1invalid/i) {
-    pass('Test connection string is syntactically valid');
-} else {
-    fail('Test connection string is syntactically valid');
-    exit;
-}
 
 my $ac = DBIx::Transaction->connect(
     $test_opts{dsn}, $test_opts{dsn_user}, $test_opts{dsn_pass},
@@ -135,10 +128,15 @@ sub run_tests {
         [ [ 'five' ], [ 'four' ], [ 'three' ] ],
         'Still good in sub-transaction'
     );
+    my($line, $file) = (__LINE__, __FILE__);
     ok($dbh->rollback, 'Roll back a sub-transaction');
+    $line++;
     eval { $dbh->commit; };
-    like($@, qr/called after a transaction error or rollback/,
+    my $err = $@;
+    like($err, qr/called after a transaction error or rollback/,
         'Commit failed because of a previous rollback');
+    like($err, qr/\QError or rollback at: $file line $line\E/,
+        'Commit failure found correct line number for error');
     is($dbh->transaction_level, 1, 'Still in a transaction');
     ok($dbh->rollback, 'Roll back transaction');
     is($dbh->transaction_level, 0, 'Not in a transaction');

@@ -8,5 +8,5 @@ MANIFEST			This list of files
 META.yml
 README
 t/DBIx-Transaction.t
-t/Makefile.t
+t/Makefile.t.disabled
 t/tlib/DBIx/Transaction/Test.pm

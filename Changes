@@ -1,5 +1,15 @@
 Revision history for Perl extension DBIx-Transaction.
 
+0.007   2006/02/24
+        - Got rid of Test::CPANpm test for now, we need a better
+          system to detect automated testing, etc.
+        - Perl 5.6.1 always returns a scalar value for do();
+          changed test_opts.ph to be compatible with that.
+        - When a transaction error or subtransaction rollback
+          occurs, then a commit happens later, make the error that
+          comes from commit() display the file name and line number
+          of the original error.
+
 0.006   2006/01/16
         - Added debugging to Makefile.t to see why our AUTOMATED_TESTING
           variable isn't being passed along.

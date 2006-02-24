@@ -40,18 +40,32 @@ sub dec_transaction_level {
 sub clear_transaction_error {
     my $self = shift;
     $self->{private_DBIx_Transaction_Error} = 0;
+    $self->{private_DBIx_Transaction_Error_Caller} = undef;
     return;    
 }
 
 sub inc_transaction_error {
-    my $self = shift;
+    my($self, @caller) = @_;
     $self->{private_DBIx_Transaction_Error}++;
+    if(@caller) {
+        $self->{private_DBIx_Transaction_Error_Caller} ||= [];
+        push(@{$self->{private_DBIx_Transaction_Error_Caller}}, \@caller);
+    }
     return;
 }
 
 sub transaction_error {
     my $self = shift;
     return $self->{private_DBIx_Transaction_Error};
+}
+
+sub transaction_error_callers {
+    my $self = shift;
+    if($self->{private_DBIx_Transaction_Error_Caller}) {
+        return @{$self->{private_DBIx_Transaction_Error_Caller}};
+    } else {
+        return;
+    }
 }
 
 sub close_transaction {
@@ -85,9 +99,17 @@ sub begin_work {
 
 sub commit {
     my $self = shift;
-    if($self->transaction_error) {
-        confess "commit() called after a transaction error or rollback!";
+    if(my $error = $self->transaction_error) {
+        my $err = "commit() called after a transaction error or rollback!";
+        if(my @callers = $self->transaction_error_callers) {
+            foreach my $i (@callers) {
+                $err .= "\nError or rollback at: $i->[1] line $i->[2]";
+            }
+        }
+            
+        confess $err;
     }
+
     if(my $l = $self->dec_transaction_level) {
         $self->transaction_trace('fake_commit');
         return 1;
@@ -99,7 +121,7 @@ sub rollback {
     my $self = shift;
     if(my $l = $self->dec_transaction_level) {
         $self->transaction_trace('fake_rollback');
-        $self->inc_transaction_error;
+        $self->inc_transaction_error(caller);
         return 1;
     }
     return $self->close_transaction('rollback', @_);
@@ -109,11 +131,11 @@ sub do {
     my $self = shift;
     my $rv = eval { DBI::db::do($self, @_); };
     if($@) {
-        $self->inc_transaction_error;
+        $self->inc_transaction_error(caller);
         die "$@\n";
     }
     if(!$rv) {
-        $self->inc_transaction_error;
+        $self->inc_transaction_error(caller);
     }
     return $rv;
 }
@@ -207,7 +229,9 @@ error, C<commit> raises an exception. Otherwise, a C<commit> call is
 issued to the underlying database layer.
 
 If there is no transaction running at all, C<commit> will raise a fatal
-error.
+error. This error will contain a full stack trace, and should also contain
+the file names and line numbers where any rollbacks or query failures
+happened.
 
 =item do
 
@@ -326,6 +350,9 @@ C<commit> and C<rollback> methods and should not be called directly.
 Indicate that a sub-transaction has failed and that the entire
 transaction should not be allowed to be committed. This is done
 automatically whenever a sub-transaction issues a C<rollback>.
+Optional parameters are the package, filename, and line where
+the transaction error occured. If provided, they will be used in
+error messages relating to the rollback.
 
 =item clear_transaction_error
 
