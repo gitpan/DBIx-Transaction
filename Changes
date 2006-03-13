@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx-Transaction.
 
+0.008   2006/03/13
+        - Get rid of our META.yml. It's confusing too many automated
+          testers!
+
 0.007   2006/02/24
         - Got rid of Test::CPANpm test for now, we need a better
           system to detect automated testing, etc.
