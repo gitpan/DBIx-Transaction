@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx-Transaction.
 
+1.000   2008/01/17
+        - Make "execute()" log who called it if there is an error.
+
 0.008   2006/03/13
         - Get rid of our META.yml. It's confusing too many automated
           testers!
