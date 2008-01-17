@@ -11,11 +11,11 @@ sub execute {
     my $self = shift;
     my $rv = eval { DBI::st::execute($self, @_); };
     if($@) {
-        $self->{Database}->inc_transaction_error(caller);
+        $self->{Database}->inc_transaction_error(caller, $self->errstr);
         die "$@\n";
     }
     if(!$rv) {
-        $self->{Database}->inc_transaction_error(caller);
+        $self->{Database}->inc_transaction_error(caller, $self->errstr);
     }
     return $rv;
 }

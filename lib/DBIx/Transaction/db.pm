@@ -104,6 +104,9 @@ sub commit {
         if(my @callers = $self->transaction_error_callers) {
             foreach my $i (@callers) {
                 $err .= "\nError or rollback at: $i->[1] line $i->[2]";
+                if($i->[3]) {
+                  $err .= " (Error String: $i->[3])";
+                }
             }
         }
             
@@ -131,11 +134,11 @@ sub do {
     my $self = shift;
     my $rv = eval { DBI::db::do($self, @_); };
     if($@) {
-        $self->inc_transaction_error(caller);
+        $self->inc_transaction_error(caller, $self->errstr);
         die "$@\n";
     }
     if(!$rv) {
-        $self->inc_transaction_error(caller);
+        $self->inc_transaction_error(caller, $self->errstr);
     }
     return $rv;
 }

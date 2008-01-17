@@ -1,5 +1,8 @@
 Revision history for Perl extension DBIx-Transaction.
 
+1.001   2008/01/17
+        - Retain the error string as well as the caller if there is an error.
+
 1.000   2008/01/17
         - Make "execute()" log who called it if there is an error.
 
