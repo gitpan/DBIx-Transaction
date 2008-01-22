@@ -6,7 +6,7 @@ use DBI;
 use base q(DBI::db);
 use strict;
 use warnings (FATAL => 'all');
-use Carp qw(confess);
+use Carp qw(confess croak);
 
 return 1;
 
@@ -135,7 +135,7 @@ sub do {
     my $rv = eval { DBI::db::do($self, @_); };
     if($@) {
         $self->inc_transaction_error(caller, $self->errstr);
-        die "$@\n";
+        croak "$@\n";
     }
     if(!$rv) {
         $self->inc_transaction_error(caller, $self->errstr);
@@ -153,7 +153,7 @@ sub transaction {
 
     if($@) {
         $self->rollback;
-        die $@;
+        croak $@;
     } elsif(!$rv) {
         $self->rollback;
     } else {

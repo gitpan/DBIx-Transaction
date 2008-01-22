@@ -4,6 +4,7 @@ use DBI;
 use base q(DBI::st);
 use strict;
 use warnings (FATAL => 'all');
+use Carp qw(croak);
 
 return 1;
 
@@ -12,7 +13,7 @@ sub execute {
     my $rv = eval { DBI::st::execute($self, @_); };
     if($@) {
         $self->{Database}->inc_transaction_error(caller, $self->errstr);
-        die "$@\n";
+        croak "$@\n";
     }
     if(!$rv) {
         $self->{Database}->inc_transaction_error(caller, $self->errstr);
