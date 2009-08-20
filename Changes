@@ -1,5 +1,9 @@
 Revision history for Perl extension DBIx-Transaction.
 
+1.003   2009/08/19
+        - Apply a patch from Toru Yamaguchi (http://search.cpan.org/~zigorou/)
+          to support DBI's "RootClass" attribute.
+
 1.002   2008/01/22
         - Return errors from the perspective of the caller.
 

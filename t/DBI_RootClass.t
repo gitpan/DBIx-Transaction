@@ -9,7 +9,7 @@ use Test::More;
 use lib "t/tlib";
 use strict;
 use warnings (FATAL => 'all');
-use DBIx::Transaction;
+use DBI;
 use DBIx::Transaction::Test;
 
 our %test_opts = %{ do "test_opts.ph" }
@@ -24,9 +24,9 @@ plan tests => 52;
 
 my $dsn = $test_opts{dsn};
 
-my $ac = DBIx::Transaction->connect(
+my $ac = DBI->connect(
     $test_opts{dsn}, $test_opts{dsn_user}, $test_opts{dsn_pass},
-    { RaiseError => 1, PrintError => 0, PrintWarn => 0, AutoCommit => 1 }
+    { RaiseError => 1, PrintError => 0, PrintWarn => 0, AutoCommit => 1, RootClass => 'DBIx::Transaction', }
 );
 
 if($ac) {
@@ -40,9 +40,9 @@ run_tests($ac, undef);
 
 $ac->disconnect;
 
-my $noac = DBIx::Transaction->connect_cached(
+my $noac = DBI->connect_cached(
     $test_opts{dsn}, $test_opts{dsn_user}, $test_opts{dsn_pass},
-    { RaiseError => 0, PrintError => 0, PrintWarn => 0, AutoCommit => 0 }
+    { RaiseError => 0, PrintError => 0, PrintWarn => 0, AutoCommit => 0, RootClass => 'DBIx::Transaction', }
 );
     
 if($noac) {

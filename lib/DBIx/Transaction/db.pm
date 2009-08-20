@@ -10,6 +10,26 @@ use Carp qw(confess croak);
 
 return 1;
 
+sub connected {
+    my ( $self, $dsn, $user, $credential, $attrs ) = @_;
+
+    if ( $self->{AutoCommit} ) {
+	$self->{private_DBIx_Transaction_AutoCommit} = 1;
+    }
+    else {
+	$self->{private_DBIx_Transaction_AutoCommit} = 0;
+    }
+
+    $self->{private_DBIx_Transaction_Level} = 0;
+    $self->{private_DBIx_Transaction_Error} = 0;
+
+    my $method = $attrs->{dbi_connect_method} || $DBI::connect_via;
+
+    $self->transaction_trace($method);
+
+    return $self;
+}
+
 sub transaction_trace {
     my($self, $method) = @_;
     my @vals = map { "$_=$self->{$_}" } map { "private_DBIx_Transaction_$_" }
