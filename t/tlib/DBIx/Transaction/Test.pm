@@ -66,7 +66,7 @@ sub do_check_foo {
             if($sth->execute) {
                 my $result = $sth->fetchall_arrayref();
                 $sth->finish;
-		note(explain($result));
+                note(explain($result));
                 return $result;
             } else {
                 diag($dbh->errstr);
@@ -102,3 +102,5 @@ sub do_and_check_foo {
         return 0;
     }
 }
+
+

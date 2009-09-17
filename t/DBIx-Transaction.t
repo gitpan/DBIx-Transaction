@@ -1,9 +1,9 @@
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl DBIx-Transaction.t'
+#!/usr/bin/perl
 
-#########################
-
-# change 'tests => 1' to 'tests => last_test_to_print';
+select(STDERR);
+$|=1;
+select(STDOUT);
+$|=1;
 
 use Test::More;
 use lib "t/tlib";
@@ -20,7 +20,7 @@ if(!$test_opts{dsn}) {
     exit;
 }
 
-plan tests => 52;
+plan tests => 70;
 
 my $dsn = $test_opts{dsn};
 
@@ -84,6 +84,8 @@ sub run_tests {
 
     my @foo_five = (q_add_foo($dbh, 'five'));
 
+    my @foo_six = (q_add_foo($dbh, 'six'));
+
     ok(run_sql($dbh, @setup), 'Setup test table');
     is($dbh->transaction_level, 1, 'Need to close transaction');
     ok($dbh->commit, 'Commit test table');
@@ -132,7 +134,7 @@ sub run_tests {
     ok($dbh->rollback, 'Roll back a sub-transaction');
     $line++;
     eval { $dbh->commit; };
-    my $err = $@;
+    my $err = ($expect_error ? $@ : $dbh->errstr);
     like($err, qr/called after a transaction error or rollback/,
         'Commit failed because of a previous rollback');
     like($err, qr/\QError or rollback at: $file line $line\E/,
@@ -146,6 +148,68 @@ sub run_tests {
         [ [ 'four' ], [ 'three' ] ],
         'Sub-transaction had no effect (rolled back)'
     );
+
+    {
+      diag("Retries");
+
+      eval {
+        $dbh->transaction(sub {
+          $dbh->transaction(sub { 1 }, 3)
+        });
+      };
+
+      my $err = $@;
+      like(
+        $err, qr/Transaction retry flow/,
+        "Can't retry inside a nested transaction"
+      );
+
+      my $want_succ = 0;
+      my $tried = 0;
+      my $txn = sub {
+        $dbh->do($_) foreach @foo_six;
+        return $want_succ;
+      };
+    
+      my $wanted_no_effect = sub {
+        my $ddbh = shift;
+        $tried++;
+        return $ddbh->_when(@_);
+      };
+
+      my $wanted_effect = sub {
+        my $ddbh = shift;
+        $tried++;
+        $want_succ = 1 if $tried >= 2;
+        return $ddbh->_when(@_);
+      };
+
+      my $rv;
+      eval { $rv = $dbh->transaction($txn, 5, $wanted_no_effect) };
+      ok(!$rv, "Transaction did not complete");
+
+      is($tried, 5, "Tried 5 times");
+      is($dbh->transaction_level, 0, 'Not in a transaction');
+
+      is_deeply(
+          do_check_foo($dbh),
+          [ [ 'four' ], [ 'three' ] ],
+          'Transaction had no effect (rolled back)'
+      );
+
+      $tried = 0;
+      eval { $rv = $dbh->transaction($txn, 5, $wanted_effect) };
+      ok(!$@, "No exception raised");
+      ok($rv, "Transaction did complete");
+      is($tried, 3, "Tried 3 times");
+
+      is_deeply(
+          do_check_foo($dbh),
+          [ [ 'four' ], [ 'six' ], [ 'three' ] ],
+          'Transaction had effect'
+      );
+    }
+
 
     ok(run_sql($dbh, @teardown), 'Teardown test table');
     ok($dbh->commit, 'Commit teardown');
@@ -163,4 +227,10 @@ sub run_tests {
         eval { do_check_foo($dbh); };
         ok($@, 'Got a query exception back');
     }
+
 }
+
+
+
+
+

@@ -132,7 +132,7 @@ sub run_tests {
     ok($dbh->rollback, 'Roll back a sub-transaction');
     $line++;
     eval { $dbh->commit; };
-    my $err = $@;
+    my $err = ($expect_error ? $@ : $dbh->errstr);
     like($err, qr/called after a transaction error or rollback/,
         'Commit failed because of a previous rollback');
     like($err, qr/\QError or rollback at: $file line $line\E/,

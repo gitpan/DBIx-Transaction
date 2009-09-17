@@ -112,7 +112,7 @@ sub begin_work {
         }
     } else {
         $self->inc_transaction_level;
-        $self->transaction_trace('begin_work');
+        $self->transaction_trace('fake_begin_work');
         return 1;
     }
 }
@@ -129,8 +129,9 @@ sub commit {
                 }
             }
         }
-            
-        confess $err;
+
+        $self->set_err(1, $err);
+        return;
     }
 
     if(my $l = $self->dec_transaction_level) {
@@ -155,7 +156,7 @@ sub do {
     my $rv = eval { DBI::db::do($self, @_); };
     if($@) {
         $self->inc_transaction_error(caller, $self->errstr);
-        croak "$@\n";
+        croak $@;
     }
     if(!$rv) {
         $self->inc_transaction_error(caller, $self->errstr);
@@ -163,24 +164,66 @@ sub do {
     return $rv;
 }
 
+sub _when {
+  my($dbh, $return_value, $return_exception, $tries) = @_;
+  my $rv = !!($tries && ($return_exception || !$return_value));
+  return $rv;
+}
+
 sub transaction {
-    my($self, $run) = @_;
-    my $rv;
+  my($self, $run, $tries, $when) = @_;
+  my($rv, $re);
 
-    $self->begin_work;
+  my $tried = 0;
+  $tries ||= 1;
 
-    eval { $rv = $run->(); };
+  if(($tries != 1 || $when) && $self->transaction_level) {
+    croak "Transaction retry flow may only be set on the outermost transaction";
+  }
 
-    if($@) {
-        $self->rollback;
-        croak $@;
-    } elsif(!$rv) {
-        $self->rollback;
-    } else {
-        $self->commit;
-    }
 
-    return $rv;    
+  $when ||= \&_when;
+
+
+  do {
+    $self->set_err(0, "Retrying transaction ($tries tries left)")
+      if $tried;
+
+    eval { $rv = $self->_transaction($run) };
+    $re = $@;
+    $tries-- unless $tries <= 0;
+    $tried++;
+  } while($when->($self, $rv, $re, $tries));
+
+  if($re) {
+    die $re;
+  } else {
+    return $rv;
+  }
+}
+
+sub _transaction {
+  my($self, $run) = @_;
+  my $rv;
+
+  $self->begin_work;
+
+  eval { $rv = $run->() };
+
+  if(my $re = $@) {
+    $self->rollback;
+    croak $re;
+  } elsif(!$rv) {
+    my $err = $self->err;
+    my $errstr = $self->errstr;
+    my $state = $self->state;
+    $self->rollback;
+    $self->set_err($err, $errstr, $state);
+  } else {
+    $self->commit;
+  }
+
+  return $rv;    
 }
 
 =pod
@@ -271,7 +314,7 @@ transactions:
 
 =over
 
-=item transaction($coderef)
+=item transaction($coderef[, $tries[, $when]])
 
 Execute the code contained inside C<$coderef> within a transaction.
 C<$coderef> is expected to return a scalar value.
@@ -305,7 +348,7 @@ out of many small transactions. Example:
   sub do_many_things {
     my $dbh = shift;
     # if any of these sub-transactions roll back, the whole thing will roll
-    # back
+    # back. Try repeating the transaction up to 5 times.
     $dbh->transaction(sub {
       if(
         do_something($dbh, 1) &&
@@ -316,8 +359,53 @@ out of many small transactions. Example:
       } else {
         return;
       }
-    });
+    }, 5);
   }
+
+=over
+
+=item Re-trying transactions
+
+If C<$tries> is specified, the transaction will be tried up to
+C<$tries> times before giving up. (Default: 1) Specify a negative
+value to re-try forever.
+
+B<Note:> only the outermost transaction may attempt retries. This
+is because if there is one failure within a transaction, the entire
+transaction fails -- so any retries in nested transactions would have
+to fail, by virtue of the previous attempt failing. If you try to set
+up retries from inside a nested transaction, this will die with the
+error "Transaction retry flow may only be set on the outermost transaction".
+
+C<$when> is an optional code reference that can be used to decide
+if a transaction should be retried or not. It will be passed the
+following arguments:
+
+=over
+
+=item The database handle (C<$dbh>)
+
+=item The return value of the transaction
+
+=item The exception raised by the transaction, if any (C<$@>)
+
+=item How many tries are left
+
+=back
+
+If the code reference returns true, the transaction will be run again.
+If it returns false, the C<$dbh->transaction()> will finish, either
+returning a value, or raising an exception if one was caused by
+the last execution of C<$coderef>.
+
+The default handler for C<$when> is simply:
+
+  sub {
+    my($dbh, $return_value, $return_exception, $tries) = @_;
+    return $tries && ($return_exception || !$return_value);
+  }
+
+=back
 
 =back
 

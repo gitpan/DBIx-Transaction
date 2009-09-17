@@ -1,5 +1,13 @@
 Revision history for Perl extension DBIx-Transaction.
 
+1.100   2009/09/17
+        - New feature: Ability to re-run a transaction if it fails
+          (really, ability to re-run a transaction whenever you want...)
+        - Updated most errors to use DBI's errstr() system instead of
+          croaking. The only exception is this new retry feature, becuase
+          DBI like's to wipe out it's error condition when the rollback
+          happens...
+
 1.003   2009/08/19
         - Apply a patch from Toru Yamaguchi (http://search.cpan.org/~zigorou/)
           to support DBI's "RootClass" attribute.

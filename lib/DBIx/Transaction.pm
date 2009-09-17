@@ -8,6 +8,6 @@ use DBI;
 use DBIx::Transaction::db;
 use DBIx::Transaction::st;
 
-our $VERSION = '1.003';
+our $VERSION = '1.100';
 
 1;
